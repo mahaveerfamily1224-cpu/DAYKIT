@@ -1,6 +1,5 @@
 {
   "appId": "com.daykit.app",
   "appName": "DAYKIT",
-  "webDir": "www",
-  "bundledWebRuntime": false
+  "webDir": "dist"
 }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#6757d9"><meta name="description" content="DAYKIT - your everyday life, organized offline">
-<link rel="manifest" href="manifest.json"><link rel="stylesheet" href="style.css">
+<link rel="manifest" href="./manifest.json"><meta name="mobile-web-app-capable" content="yes">
 <title>DAYKIT</title>
 </head>
 <body>
@@ -37,7 +37,7 @@
 </section>
 <section id="page-docs" class="page">
 <div class="section-head"><h2 data-i18n="documents">Documents</h2><label class="primary filelabel">＋ <span data-i18n="upload">Add file</span><input type="file" id="docFile" accept="image/*,.pdf" hidden></label></div>
-<p class="muted" data-i18n="docHint">Files are saved in this browser on this device.</p><div id="docList" class="list empty">No documents saved.</div>
+<p class="muted" data-i18n="docHint">Files are saved on this device.</p><div id="docList" class="list empty">No documents saved.</div>
 </section>
 <section id="page-expenses" class="page">
 <h2 data-i18n="expenses">Expenses</h2><form id="expenseForm" class="form"><input id="expenseTitle" required placeholder="Description"><input id="expenseAmount" type="number" min="0.01" step="0.01" required placeholder="Amount (₹)"><select id="expenseCategory"><option>Food</option><option>Travel</option><option>Shopping</option><option>Bills</option><option>Health</option><option>Other</option></select><input id="expenseDate" type="date" required><button class="primary" data-i18n="saveExpense">Save expense</button></form><div id="expenseList" class="list empty"></div>
@@ -51,14 +51,14 @@
 <section id="page-tools" class="page">
 <h2 data-i18n="tools">Smart tools</h2><div class="toolgrid">
 <div class="toolcard"><h3>₹ <span data-i18n="currency">Currency split</span></h3><input id="bill" type="number" placeholder="Bill total"><input id="people" type="number" min="1" value="2" placeholder="People"><button class="primary" id="splitBtn" data-i18n="calculate">Calculate</button><p id="splitResult" class="result"></p></div>
-<div class="toolcard"><h3>▦ QR <span data-i18n="qr">QR generator</span></h3><input id="qrText" placeholder="Enter text or URL"><button class="primary" id="qrBtn" data-i18n="makeQR">Create QR</button><div id="qrResult" class="result muted">QR generation needs an internet connection in this V1.</div></div>
+<div class="toolcard"><h3>▦ QR <span data-i18n="qr">QR generator</span></h3><input id="qrText" placeholder="Enter text or URL"><button class="primary" id="qrBtn" data-i18n="makeQR">Create QR</button><div id="qrResult" class="result muted">Offline QR generation will be added in a later release.</div></div>
 <div class="toolcard"><h3>⇄ <span data-i18n="unit">Unit converter</span></h3><input id="km" type="number" placeholder="Kilometres"><button class="primary" id="unitBtn" data-i18n="convert">Convert to miles</button><p id="unitResult" class="result"></p></div>
 </div>
 </section>
 <section id="page-backup" class="page">
-<h2 data-i18n="backup">Backup & restore</h2><div class="toolcard"><p data-i18n="backupHint">Export your DAYKIT records and saved documents to a backup file. Keep it somewhere safe.</p><button class="primary" id="exportBtn" data-i18n="export">Export backup</button><hr><label class="primary filelabel">＋ <span data-i18n="import">Restore backup</span><input id="importFile" type="file" accept=".json,application/json" hidden></label><p class="muted" data-i18n="restoreWarning">Restoring replaces the current DAYKIT data on this device.</p></div><div class="note">⚠️ Browser data may be removed if you clear site data, uninstall the browser or reset the device. Keep manual backups.</div>
+<h2 data-i18n="backup">Backup & restore</h2><div class="toolcard"><p data-i18n="backupHint">Export your DAYKIT records and saved documents to a backup file. Keep it somewhere safe.</p><button class="primary" id="exportBtn" data-i18n="export">Export backup</button><p id="backupStatus" class="result muted" role="status" aria-live="polite"></p><hr><label class="primary filelabel">＋ <span data-i18n="import">Restore backup</span><input id="importFile" type="file" accept=".json,application/json" hidden></label><p class="muted" data-i18n="restoreWarning">Restoring replaces the current DAYKIT data on this device.</p></div><div class="note">⚠️ Keep a copy of your backup outside this device. Clearing app data or uninstalling the app can remove local records.</div>
 </section>
 </main>
-<footer>DAYKIT V1 · Local-first · No account required</footer>
-<script src="app.js"></script>
+<footer>DAYKIT V1.1 · Local-first · No account required</footer>
+<script type="module" src="./app.js"></script>
 </body></html>
