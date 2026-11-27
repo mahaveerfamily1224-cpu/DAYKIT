@@ -2,6 +2,7 @@ import './style.css';
 import { Capacitor } from '@capacitor/core';
 import { Directory, Filesystem } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import { GoogleSignIn } from '@capawesome/capacitor-google-sign-in';
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const DB='daykit-v1', STORE='records';
@@ -108,11 +109,144 @@ $('#importFile').onchange=async e=>{
   }catch(err){alert('Restore failed: '+(err.message||'Invalid backup file.'))}
   finally{e.target.value=''}
 };
+
+const GOOGLE_WEB_CLIENT_ID = '76599550996-67ra78ov7fq07so8bn7us9ua36049hgv.apps.googleusercontent.com';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_BACKUP_NAME = 'DAYKIT-backup.json';
+let driveInitialized = false;
+
+async function getDriveAccessToken() {
+  if (!Capacitor.isNativePlatform()) {
+    throw new Error('Google Drive backup is currently available in the Android app only.');
+  }
+  if (!driveInitialized) {
+    await GoogleSignIn.initialize({ clientId: GOOGLE_WEB_CLIENT_ID, scopes: [DRIVE_SCOPE] });
+    driveInitialized = true;
+  }
+  const result = await GoogleSignIn.signIn();
+  if (!result || !result.accessToken) {
+    throw new Error('Google did not return Drive access. Please try connecting again.');
+  }
+  if (result.email) localStorage.setItem('daykit-drive-email', result.email);
+  updateDriveAccount();
+  return result.accessToken;
+}
+
+function updateDriveAccount() {
+  const email = localStorage.getItem('daykit-drive-email');
+  const el = $('#driveAccount');
+  if (el) el.textContent = email ? 'Last connected Google account: ' + email : 'Not connected. Connect when you want to back up.';
+}
+
+async function driveRequest(token, url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: { Authorization: 'Bearer ' + token, ...(options.headers || {}) }
+  });
+  if (!response.ok) {
+    let detail = '';
+    try { detail = (await response.json()).error?.message || ''; } catch (_) {}
+    throw new Error(detail || ('Google Drive request failed (' + response.status + ').'));
+  }
+  if (response.status === 204) return null;
+  return response.json();
+}
+
+async function findDriveBackup(token) {
+  const q = encodeURIComponent("name = '" + DRIVE_BACKUP_NAME + "' and 'appDataFolder' in parents and trashed = false");
+  const result = await driveRequest(token,
+    'https://www.googleapis.com/drive/v3/files?q=' + q + '&spaces=appDataFolder&orderBy=modifiedTime desc&pageSize=1&fields=files(id,name,modifiedTime,size)');
+  return result.files?.[0] || null;
+}
+
+async function writeDriveBackup(token, fileId, json) {
+  if (fileId) {
+    return driveRequest(token,
+      'https://www.googleapis.com/upload/drive/v3/files/' + encodeURIComponent(fileId) + '?uploadType=media',
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: json });
+  }
+  const metadata = await driveRequest(token, 'https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: DRIVE_BACKUP_NAME, parents: ['appDataFolder'], mimeType: 'application/json' })
+  });
+  return driveRequest(token,
+    'https://www.googleapis.com/upload/drive/v3/files/' + encodeURIComponent(metadata.id) + '?uploadType=media',
+    { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: json });
+}
+
+$('#driveBackupBtn').onclick = async () => {
+  const btn = $('#driveBackupBtn');
+  btn.disabled = true;
+  setDriveStatus('Connecting to Google…');
+  try {
+    const token = await getDriveAccessToken();
+    await save();
+    const payload = { app: 'DAYKIT', version: 1, exported: new Date().toISOString(), data: JSON.parse(JSON.stringify(data)) };
+    const existing = await findDriveBackup(token);
+    if (existing && !confirm('A DAYKIT backup already exists in this Google account. Replace it with the data on this device?')) {
+      setDriveStatus('Backup cancelled. Your existing Drive backup was not changed.');
+      return;
+    }
+    await writeDriveBackup(token, existing?.id, JSON.stringify(payload));
+    setDriveStatus('Google Drive backup completed: ' + new Date().toLocaleString() + '.');
+  } catch (err) {
+    console.error('DAYKIT Drive backup failed', err);
+    setDriveStatus('Drive backup failed: ' + (err.message || 'Unknown error'));
+    alert('Google Drive backup failed. ' + (err.message || 'Please try again.'));
+  } finally { btn.disabled = false; }
+};
+
+$('#driveRestoreBtn').onclick = async () => {
+  const btn = $('#driveRestoreBtn');
+  btn.disabled = true;
+  setDriveStatus('Connecting to Google…');
+  try {
+    const token = await getDriveAccessToken();
+    const remote = await findDriveBackup(token);
+    if (!remote) {
+      setDriveStatus('No DAYKIT backup was found in this Google account.');
+      return;
+    }
+    if (!confirm('Restore the DAYKIT backup from Google Drive? This replaces the records currently on this device.')) {
+      setDriveStatus('Restore cancelled. Your local data was not changed.');
+      return;
+    }
+    const response = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(remote.id) + '?alt=media', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (!response.ok) throw new Error('Could not download the Drive backup (' + response.status + ').');
+    const obj = await response.json();
+    const restored = validateBackup(obj);
+    const previous = data;
+    data = restored;
+    try {
+      await save();
+      render();
+      setDriveStatus('Drive backup restored successfully. Last modified: ' + new Date(remote.modifiedTime).toLocaleString() + '.');
+      alert('Google Drive backup restored successfully.');
+    } catch (err) {
+      data = previous;
+      throw err;
+    }
+  } catch (err) {
+    console.error('DAYKIT Drive restore failed', err);
+    setDriveStatus('Drive restore failed: ' + (err.message || 'Unknown error'));
+    alert('Google Drive restore failed. ' + (err.message || 'Please try again.'));
+  } finally { btn.disabled = false; }
+};
+
+function setDriveStatus(message) {
+  const el = $('#driveStatus');
+  if (el) el.textContent = message;
+}
+
 $('#themeBtn').onclick=()=>{let d=document.documentElement.dataset.theme!=='dark';document.documentElement.dataset.theme=d?'dark':'light';localStorage.setItem('daykit-theme',d?'dark':'light');$('#themeBtn').textContent=d?'☀':'☾'};
 if(localStorage.getItem('daykit-theme')==='dark'){document.documentElement.dataset.theme='dark';$('#themeBtn').textContent='☀'}
 $('#langBtn').onclick=()=>{lang=lang==='en'?'ta':'en';document.documentElement.lang=lang;$$('[data-i18n]').forEach(el=>{let k=el.dataset.i18n;if(translations[lang][k])el.textContent=translations[lang][k]});$('#langBtn').textContent=lang==='en'?'தமிழ்':'English';render()};
 
 (async()=>{
+  updateDriveAccount();
   try{db=await openDB();await load();render()}
   catch(e){console.error(e);alert('Local database is unavailable. Please check device storage permissions and try again.')}
 })();
