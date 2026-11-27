@@ -1,0 +1,10 @@
+{
+  "name": "DAYKIT",
+  "short_name": "DAYKIT",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f6fb",
+  "theme_color": "#6757d9",
+  "description": "Your everyday life, organized offline",
+  "icons": []
+}
