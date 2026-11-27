@@ -1,3 +1,4 @@
+
 {
   "name": "daykit",
   "version": "1.1.0",
@@ -10,7 +11,8 @@
     "@capacitor/core": "^8.0.0",
     "@capacitor/android": "^8.0.0",
     "@capacitor/filesystem": "^8.0.0",
-    "@capacitor/share": "^8.0.0"
+    "@capacitor/share": "^8.0.0",
+    "@capawesome/capacitor-google-sign-in": "^0.1.4"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.0.0",
